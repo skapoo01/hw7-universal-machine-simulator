@@ -1,0 +1,13 @@
+halt.um
+add.um
+seg-load.um
+bit-nand.um
+map_seg.um
+seg-store.um
+load-program.um
+input.um 
+cmov.um
+multiply.um
+divide.um
+unmap-seg.um
+
