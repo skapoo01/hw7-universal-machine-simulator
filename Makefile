@@ -37,7 +37,7 @@ LDLIBS =  -l40locality -lnetpbm -lm -lrt -lbitpack -lcii40-O2
 # dependency list.
 INCLUDES = $(shell echo *.h)
 
-EXECS = um array
+EXECS = um
 
 ############### Rules ###############
 

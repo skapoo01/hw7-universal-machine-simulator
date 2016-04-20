@@ -4,21 +4,14 @@
 #include <assert.h>
 #include <inttypes.h>
 #include <string.h>
-typedef struct Array 
+#include "unsafearray.h"
+
+struct Array 
 {
 	int length;
 	uint32_t elems[];
-} *Array;
+};
 
-static inline int Array_length (Array a);
-
-
-static inline void Array_free (Array *a);
-
-static inline Array Array_copy (Array a, int length);
-
-static inline uint32_t* Array_at (Array a, int i);
-static inline Array Array_new (int length);
 
 // int main()
 // {
@@ -46,30 +39,27 @@ static inline Array Array_new (int length);
 
 
 
-static inline int Array_length (Array a)
+int Array_length (Array a)
 {
 	return a -> length;
 }
 
-static inline uint32_t* Array_at (Array a, int i)
+uint32_t* Array_at (Array a, int i)
 {
-	assert (a);
-	assert (i >= 0 && i < a -> length);
 	return &(a->elems[i]);
 
 } 
 
-static inline void Array_free (Array *a)
+void Array_free (Array *a)
 {
-	assert (a && *a);
+
 	free(*a);
 } 
 
-static inline Array Array_copy (Array a, int length)
+Array Array_copy (Array a, int length)
 {
 	Array copy;
-	assert (a);
-	assert (length >= 0);
+
 	copy = Array_new(length);
 	if( copy->length >= a->length && a->length > 0){
 		memcpy(copy->elems, a->elems, a->length*sizeof(*a->elems));
@@ -80,10 +70,12 @@ static inline Array Array_copy (Array a, int length)
 } 
 
 
-static inline Array Array_new (int length)
+Array Array_new (int length)
 {
 	Array a = malloc(sizeof(*a) + length * sizeof(*a->elems));
-	assert (a != NULL && length > 0);
 	a -> length = length;
+	for (int i = 0; i < length; i++){
+		a->elems[i] = 0;
+	}
 	return a;
 }
