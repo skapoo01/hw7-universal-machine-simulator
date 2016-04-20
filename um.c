@@ -16,7 +16,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+
 #include <uarray.h> 
+
 #include <assert.h>
 #include <inttypes.h>
 #include <sys/stat.h>
@@ -66,13 +68,7 @@ typedef struct program_counter {
     int offset;
 } *program_counter;
 
-/*
-static inline int Array_length (Array a);
-static inline void* Array_at (Array a, int i);
-static inline void Array_free (Array *a);
-static inline Array Array_copy (Array a, int length);
-static inline Array Array_new (int length, int size);
-*/
+
 
 static inline uint64_t Bitpack_getu(uint64_t word, unsigned width, unsigned lsb);
 static inline uint64_t Bitpack_newu(uint64_t word, unsigned width, unsigned lsb,

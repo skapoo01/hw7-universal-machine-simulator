@@ -37,7 +37,7 @@ LDLIBS =  -l40locality -lnetpbm -lm -lrt -lbitpack -lcii40-O2
 # dependency list.
 INCLUDES = $(shell echo *.h)
 
-EXECS = um
+EXECS = um array
 
 ############### Rules ###############
 
@@ -54,8 +54,11 @@ all: $(EXECS)
 ## Linking step (.o -> executable program)
  
 
-um: um.o 
+um: um.o unsafearray.o
 	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS) 
+
+array: unsafearray.o
+	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
 
 clean: 
 	rm -f $(EXECS) *.o
