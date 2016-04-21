@@ -15,14 +15,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-
-//#include "unsafesequence.h"
-//#include <seq.h>
-//#include <uarray.h> 
-//#include "unsafearray.h"
-// #include <stack.h>
-
-
 #include <assert.h>
 #include <inttypes.h>
 #include <sys/stat.h>
@@ -86,8 +78,6 @@ typedef struct program_counter {
 } *program_counter;
 
 
-
-
 static inline Sequence Seq_new (int hint);
 static inline void Seq_addhi (Sequence s, Array a);
 static inline void Seq_expand (Sequence s);
@@ -95,30 +85,17 @@ static inline Array Seq_get (Sequence s, int index);
 static inline int Seq_length (Sequence s);
 static inline void Seq_put (Sequence s, int index, Array a);
 static inline void Seq_free(Sequence *s);
-
-
-
 static inline Stack Stack_new ();
 static inline void Stack_expand (Stack s);
 static inline void Stack_push (Stack s, uint64_t a);
 static inline uint64_t Stack_pop (Stack s);
 static inline bool Stack_empty(Stack s);
 static inline void Stack_free(Stack *s);
-
 static inline void Array_free (Array *a);
-
 static inline Array Array_copy (Array a, int length);
-
 static inline uint32_t* Array_at (Array a, int i);
 static inline Array Array_new (int length);
-
 static inline int Array_length (Array a);
-
-
-
-
-
-
 static inline uint64_t Bitpack_getu(uint64_t word, unsigned width, unsigned lsb);
 static inline uint64_t Bitpack_newu(uint64_t word, unsigned width, unsigned lsb,
                       uint64_t value);
@@ -338,7 +315,6 @@ static inline void load_instruction(UM_Mem m, const char* filename)
 
     Array segment_0 = Array_new(num_instructions);
     int c = 0;
- 
     while (counter < num_instructions) {
         for (int i = 3; i >= 0; i--) {
             c = getc(fp);
@@ -624,7 +600,6 @@ static inline void load_value (uint32_t* registers, uint32_t reg_a, uint32_t val
 static inline uint64_t Bitpack_getu(uint64_t word, unsigned width, unsigned lsb)
 {
         unsigned hi = lsb + width; /* one beyond the most significant bit */
-        //assert(hi <= 64);
         /* different type of right shift */
         return shr(shl(word, 64 - hi), 64 - width); 
 }
@@ -633,9 +608,6 @@ static inline uint64_t Bitpack_newu(uint64_t word, unsigned width, unsigned lsb,
                       uint64_t value)
 {
         unsigned hi = lsb + width; /* one beyond the most significant bit */
-        //assert(hi <= 64);
-        // if (!Bitpack_fitsu(value, width))
-        //         RAISE(Bitpack_Overflow);
         return shl(shr(word, hi), hi)                 /* high part */
                 | shr(shl(word, 64 - lsb), 64 - lsb)  /* low part  */
                 | (value << lsb);                     /* new part  */
@@ -644,7 +616,6 @@ static inline uint64_t Bitpack_newu(uint64_t word, unsigned width, unsigned lsb,
 
 static inline uint64_t shl(uint64_t word, unsigned bits)
 {
-        // assert(bits <= 64);
         if (bits == 64)
                 return 0;
         else
@@ -656,7 +627,6 @@ static inline uint64_t shl(uint64_t word, unsigned bits)
  */
 static inline uint64_t shr(uint64_t word, unsigned bits)
 {
-        // assert(bits <= 64);
         if (bits == 64)
                 return 0;
         else
@@ -689,7 +659,6 @@ static inline uint32_t* Array_at (Array a, int i)
 
 static inline void Array_free (Array *a)
 {
-
     free(*a);
 } 
 
@@ -788,7 +757,6 @@ static inline Stack Stack_new ()
 static inline void Stack_expand (Stack s)
 {
     uint64_t *new = malloc((s->capacity * 2) * (sizeof(*(s->elems))));
-    
     for (int i = 0; i < s->Length; i++){
         new[i] = s->elems[i];
     }

@@ -54,7 +54,7 @@ all: $(EXECS)
 ## Linking step (.o -> executable program)
  
 
-um: um.o unsafearray.o 
+um: um.o
 	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS) 
 
 array: unsafearray.o
