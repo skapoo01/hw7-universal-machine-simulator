@@ -11,14 +11,17 @@
  *      
  *
  ********************************************************************/
-#include <stack.h>
-#include <seq.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 
+//#include "unsafesequence.h"
+//#include <seq.h>
 //#include <uarray.h> 
 //#include "unsafearray.h"
+// #include <stack.h>
+
 
 #include <assert.h>
 #include <inttypes.h>
@@ -40,6 +43,7 @@
 
 Except_T Bitpack_Overflow = { "Overflow packing bits" };
 
+
 typedef struct Array 
 {
     int length;
@@ -47,6 +51,17 @@ typedef struct Array
 } *Array;
 
 
+typedef struct Stack  
+{
+    int Length, capacity;
+    uint64_t *elems;
+} *Stack;
+
+typedef struct Sequence  
+{
+    int Length, capacity;
+    Array *elems;
+} *Sequence;
 typedef struct instruction {
     uint32_t opcode;
     uint32_t register_a;
@@ -56,8 +71,8 @@ typedef struct instruction {
 } *instruction;
 
 typedef struct UM_Mem {
-    Seq_T memory;       /* A sequence of pointers to UArray_T segments */
-    Stack_T mem_tracker;/* A stack of integer seg_id’s */
+    Sequence memory;       /* A sequence of pointers to UArray_T segments */
+    Stack mem_tracker;/* A stack of integer seg_id’s */
 } *UM_Mem;
 
 typedef enum Um_opcode {
@@ -73,9 +88,22 @@ typedef struct program_counter {
 
 
 
+static inline Sequence Seq_new (int hint);
+static inline void Seq_addhi (Sequence s, Array a);
+static inline void Seq_expand (Sequence s);
+static inline Array Seq_get (Sequence s, int index);
+static inline int Seq_length (Sequence s);
+static inline void Seq_put (Sequence s, int index, Array a);
+static inline void Seq_free(Sequence *s);
 
 
 
+static inline Stack Stack_new ();
+static inline void Stack_expand (Stack s);
+static inline void Stack_push (Stack s, uint64_t a);
+static inline uint64_t Stack_pop (Stack s);
+static inline bool Stack_empty(Stack s);
+static inline void Stack_free(Stack *s);
 
 static inline void Array_free (Array *a);
 
@@ -102,123 +130,107 @@ static bool last_instruction (program_counter pc, UM_Mem m);
 
 /* returns a new UM_Mem with an empty memory sequence capable of holding 
    UArray segments, and an empty mem_tracker stack */
-extern UM_Mem new_memory();
+static inline UM_Mem new_memory();
 
 /* frees all associated memory in the UM_mem */
-extern void free_memory(UM_Mem memory); 
+static inline void free_memory(UM_Mem memory); 
 
 /* creates a segment in UM_mem capable of holding num_words, 32-bit words and 
    returns seg_id */
-extern int map_seg(UM_Mem memory, int num_words);  
+static inline int map_seg(UM_Mem memory, int num_words);  
 
 /* pushes segment id onto mem_tracker and frees segment memory */
-extern void unmap_seg(UM_Mem memory, int seg_id); 
+static inline void unmap_seg(UM_Mem memory, int seg_id); 
 
 /* returns address of a particular offset in a particular segment in memory */
-extern uint32_t* mem_address(UM_Mem memory, int seg_id, int offset); 
+static inline uint32_t* mem_address(UM_Mem memory, int seg_id, int offset); 
 
 /* loads 32-bit word into segment 0 */
-extern void load_instruction(UM_Mem memory, const char* filename); 
+static inline void load_instruction(UM_Mem memory, const char* filename); 
 
 /* mem segment at the seg_id is duplicated, and duplicate replaces segment 0*/
-extern void load_segment(UM_Mem memory, int seg_id); 
+static inline void load_segment(UM_Mem memory, int seg_id); 
 
 /* returns the length of the segment associated with seg_id */
-extern int segment_length(UM_Mem memory, int seg_id); 
+static inline int segment_length(UM_Mem memory, int seg_id); 
 
 /*prints out the sequence memory, and corresponding segments */
-extern void print_mem_map(UM_Mem memory);
+static inline void print_mem_map(UM_Mem memory);
 
 /* parses 32-bit instrction into opcode and register usage */
-void parse_instruction (uint32_t encoded, instruction decoded);
+static inline void parse_instruction (uint32_t encoded, instruction decoded);
 
 /* returns initialized instruction struct */
-instruction new_instruction ();
-
-/* returns reg_a in decoded */
-uint32_t get_reg_a (instruction decoded);
-
-/* returns reg_b in decoded */
-uint32_t get_reg_b (instruction decoded);
-
-/* returns reg_c in decoded */
-uint32_t get_reg_c (instruction decoded);
-
-/* returns opcode in decoded */
-uint32_t get_opcode (instruction decoded);
-
-/* returns value in decoded */
-uint32_t get_value (instruction decoded);
-
+static inline instruction new_instruction ();
 
 /* Runs the execution of the UM and UM instructions */ 
-void execute (UM_Mem m); 
+static inline void execute (UM_Mem m); 
 
 /* updates pc and returns the next 32 bit word instruction from segment 0 */ 
-uint32_t get_instruction(UM_Mem m, program_counter pc); 
+static inline uint32_t get_instruction(UM_Mem m, program_counter pc); 
 
 /* function determines which instruction to execute based off of the opcode */
-void handle_instruction (UM_Mem m, instruction operation, uint32_t* registers, 
+static inline void handle_instruction (UM_Mem m, instruction operation, uint32_t* registers, 
                          program_counter pc, bool *halt_flag); 
 
 /* checks if register C is 0, if not then the contents of reg_b are 
    moved to reg_a */
-void conditional_move(uint32_t* registers, uint32_t reg_a, uint32_t reg_b, 
+static inline void conditional_move(uint32_t* registers, uint32_t reg_a, uint32_t reg_b, 
                       uint32_t reg_c); 
 
 /* the contents in segment[reg_b][reg_c] are moved to reg_a */ 
-void segmented_load (UM_Mem m, uint32_t* registers, uint32_t reg_a, 
+static inline void segmented_load (UM_Mem m, uint32_t* registers, uint32_t reg_a, 
                                uint32_t reg_b, uint32_t reg_c); 
 
 /* memory segment [reg_a][reg_b] gets the contents of reg_a */
-void segmented_store (UM_Mem m, uint32_t* registers, uint32_t reg_a, 
+static inline void segmented_store (UM_Mem m, uint32_t* registers, uint32_t reg_a, 
                                 uint32_t reg_b, uint32_t reg_c); 
 
 /* reg_a gets the sum of the contents of reg_b and reg_c */
-void add (uint32_t* registers, uint32_t reg_a, uint32_t reg_b, 
+static inline void add (uint32_t* registers, uint32_t reg_a, uint32_t reg_b, 
           uint32_t reg_c);  
 
 /* reg_a gets the product of the contents of reg_b and reg_c */
-void multiply (uint32_t* registers, uint32_t reg_a, uint32_t reg_b, 
+static inline void multiply (uint32_t* registers, uint32_t reg_a, uint32_t reg_b, 
                uint32_t reg_c); 
 
 /* reg_a gets the quotient of reg_b and reg_c */
-void divide (uint32_t* registers, uint32_t reg_a, uint32_t reg_b, 
+static inline void divide (uint32_t* registers, uint32_t reg_a, uint32_t reg_b, 
              uint32_t reg_c); 
 
 /* reg_a gets ~(reg_b & reg_c) */
-void bit_nand (uint32_t* registers, uint32_t reg_a, uint32_t reg_b, 
+static inline void bit_nand (uint32_t* registers, uint32_t reg_a, uint32_t reg_b, 
                uint32_t reg_c); 
 
 /* computation stops and the UM is shut down */
-void halt (); 
+static inline void halt (); 
 
 /* a new segment is created with a number of words equal to the value of 
    reg_c, each words in the new segment is initialized to 0, bit pattern of 
    not all zeroes and does not identify and mapped segment is put in reg_b, 
    new segment is mapped to segment[reg_b] */
-void map_segment (UM_Mem m, uint32_t* registers, uint32_t reg_b, 
+static inline void map_segment (UM_Mem m, uint32_t* registers, uint32_t reg_b, 
                             uint32_t reg_c); 
 
 /* segment[reg_c] is unmapped */
-void unmap_segment (UM_Mem m, uint32_t* registers, uint32_t reg_c); 
+static inline void unmap_segment (UM_Mem m, uint32_t* registers, uint32_t reg_c); 
 
 /* value of reg_c is displayed on I/O device, 
    only values 0 to 255 are allowed */ 
-void output (uint32_t* registers, uint32_t reg_c); 
+static inline void output (uint32_t* registers, uint32_t reg_c); 
 
 /* UM waits for input on I/O device, reg_c is loaded with input which 
 must be a value from 0 to 255, if the end of input is signaled, reg_c is 
 loaded with a 32­bit word in which every bit is 1 */
-void input (uint32_t* registers, uint32_t reg_c); 
+static inline void input (uint32_t* registers, uint32_t reg_c); 
 
 /* segment [reg_b] is duplicated and duplicate replaces segment[0], 
 program counter is set to point to segment[0][reg_c] */
-void load_program (UM_Mem m, uint32_t* registers, uint32_t reg_b, 
+static inline void load_program (UM_Mem m, uint32_t* registers, uint32_t reg_b, 
                              uint32_t reg_c, program_counter pc);
 
 /* value is loaded into register a  */
-void load_value (uint32_t* registers, uint32_t reg_a, uint32_t value);
+static inline void load_value (uint32_t* registers, uint32_t reg_a, uint32_t value);
 
 
 int main (int argc, char const *argv[])
@@ -230,23 +242,18 @@ int main (int argc, char const *argv[])
     }
     /* initialize UM memory */
     UM_Mem memory = new_memory();
-    //printf("seq length %d\n",Seq_length(memory->memory));
 
-    //printf("before load instr\n");
     /* load .um program */
     load_instruction(memory, argv[1]);
-    //printf("after load instr\n");
     execute(memory);
-    
     free_memory(memory);
-
     return 0;
 }
 
 
 /* returns a new UM_Mem with an empty memory sequence capable of holding 
    UArray segments, and an empty mem_tracker stack */
-UM_Mem new_memory()
+static inline UM_Mem new_memory()
 {
     UM_Mem mem = malloc (sizeof(*mem)); 
 
@@ -257,14 +264,12 @@ UM_Mem new_memory()
 }
 
 /* frees all associated memory in the UM_mem */
-extern void free_memory(UM_Mem m)
+static inline void free_memory(UM_Mem m)
 {
     Array temp = NULL;
-    int i = 0;
-
     int length = Seq_length(m -> memory);
     /* free every element of the sequence until it is empty */
-    for (i = 0; i < length; i++){
+    for (int i = 0; i < length; i++){
             temp = Seq_get (m -> memory, i);
             Array_free (&temp);
     }
@@ -276,7 +281,7 @@ extern void free_memory(UM_Mem m)
 
 /* creates a segment in UM_mem capable of holding num_words, 32-bit words and 
    returns seg_id */
-int map_seg(UM_Mem m, int num_words)
+static inline int map_seg(UM_Mem m, int num_words)
 {
     uint64_t index;
     /* creates new UArray to hold num_words and size of a uint32_t */
@@ -288,16 +293,16 @@ int map_seg(UM_Mem m, int num_words)
             Seq_addhi (m -> memory, segment);
             return (Seq_length (m -> memory) - 1);
      } else {
-            index = (uint64_t)Stack_pop (m -> mem_tracker);
-            Array old = Seq_get(m -> memory, (int)index);
+            index = Stack_pop (m -> mem_tracker);
+            Array old = Seq_get(m -> memory, index);
             Array_free(&old);
-            Seq_put (m -> memory, (int)index, segment);
+            Seq_put (m -> memory, index, segment);
             return (int)index;
     }
 } 
 
 /* pushes segment id onto mem_tracker to be reused */
-void unmap_seg(UM_Mem m, int seg_id)
+static inline void unmap_seg(UM_Mem m, int seg_id)
 {
     assert (seg_id < Seq_length(m -> memory));
 
@@ -305,19 +310,19 @@ void unmap_seg(UM_Mem m, int seg_id)
     uint64_t seg_index = seg_id; 
 
     if (segment != NULL){   
-            Stack_push (m -> mem_tracker, (void *)seg_index);
+            Stack_push (m -> mem_tracker, seg_index);
     }
 } 
 
 /* returns address of a particular offset in a particular segment in memory */
-uint32_t* mem_address(UM_Mem m, int seg_id, int offset)
+static inline uint32_t* mem_address(UM_Mem m, int seg_id, int offset)
 {       
     Array segment = Seq_get (m -> memory, seg_id);
     return Array_at(segment, offset);
 } 
 
 /* loads 32-bit word into segment 0 */
-void load_instruction(UM_Mem m, const char* filename) 
+static inline void load_instruction(UM_Mem m, const char* filename) 
 { 
     FILE *fp = fopen (filename, "r");
     assert (fp != NULL);
@@ -347,16 +352,12 @@ void load_instruction(UM_Mem m, const char* filename)
         counter++;
         seg_index++;
     }
-        
-
-    Seq_addlo (m -> memory, segment_0);
-            //printf("seq length after adding %d\n",Seq_length(m->memory));
-               // print_mem_map(m);
+    Seq_addhi (m -> memory, segment_0);
     fclose(fp);
 }
 
 /* mem segment at the seg_id is duplicated, and duplicate replaces segment 0*/
-void load_segment(UM_Mem m, int seg_id) 
+static inline void load_segment(UM_Mem m, int seg_id) 
 {
     Array to_copy = Seq_get(m -> memory, seg_id);
     Array segment = Array_copy(to_copy, Array_length(to_copy));
@@ -368,7 +369,7 @@ void load_segment(UM_Mem m, int seg_id)
 }
 
 /* returns the length of the segment associated with seg_id */
-int segment_length(UM_Mem m, int seg_id)
+static inline int segment_length(UM_Mem m, int seg_id)
 {
     Array segment = Seq_get (m -> memory, seg_id);
     int length = Array_length(segment);
@@ -376,7 +377,7 @@ int segment_length(UM_Mem m, int seg_id)
 } 
 
 /* prints out the sequence memory, and corresponding segments */
-void print_mem_map(UM_Mem m)
+static inline void print_mem_map(UM_Mem m)
 {
     Array segment;
     uint32_t *word;
@@ -391,10 +392,9 @@ void print_mem_map(UM_Mem m)
             }        
             printf("\n");
     }
-    printf("outta print mem\n");
 }
 
-void parse_instruction (uint32_t encoded, instruction decoded)
+static inline void parse_instruction (uint32_t encoded, instruction decoded)
 {
     uint32_t opcode = Bitpack_getu(encoded, op_width, op_lsb);
 
@@ -410,7 +410,7 @@ void parse_instruction (uint32_t encoded, instruction decoded)
     }
 }
 
-instruction new_instruction ()
+static inline instruction new_instruction ()
 {
     instruction decoded = malloc (sizeof(*decoded));
 
@@ -422,38 +422,8 @@ instruction new_instruction ()
     return decoded; 
 }
 
-uint32_t get_reg_a (instruction decoded)
-{
-    uint32_t register_a = decoded -> register_a;
-    return register_a;
-}
 
-uint32_t get_reg_b (instruction decoded)
-{
-    uint32_t register_b = decoded -> register_b;
-    return register_b;
-}
-
-uint32_t get_reg_c (instruction decoded)
-{
-    uint32_t register_c = decoded -> register_c;
-    return register_c;
-}
-
-uint32_t get_opcode (instruction decoded)
-{
-    int opcode = decoded -> opcode;
-    return opcode;
-}
-
-uint32_t get_value (instruction decoded)
-{
-    int value = decoded -> value;
-    return value;
-}
-
-
-void execute (UM_Mem m)
+static inline void execute (UM_Mem m)
 {
     uint32_t registers [8] = {0, 0, 0, 0, 0, 0, 0, 0};
     struct program_counter pc = {NULL, 0};
@@ -461,7 +431,6 @@ void execute (UM_Mem m)
     bool halt_called = false;
 
     instruction decoded = new_instruction(); 
-   // print_mem_map(m);
     while (!last_instruction(&pc, m)) {
         if (halt_called == true) {
             break;
@@ -470,7 +439,6 @@ void execute (UM_Mem m)
         parse_instruction (command, decoded);
         handle_instruction(m, decoded, registers, &pc, &halt_called);
     }
-   // print_mem_map(m);
     free(decoded);
 }
 
@@ -483,7 +451,7 @@ static bool last_instruction (program_counter pc, UM_Mem m)
     }
 }
 
-uint32_t get_instruction(UM_Mem m, program_counter pc)
+static inline uint32_t get_instruction(UM_Mem m, program_counter pc)
 {
     /* get next instruction */
     uint32_t instruction = *mem_address(m, 0, pc -> offset);
@@ -493,108 +461,65 @@ uint32_t get_instruction(UM_Mem m, program_counter pc)
     return instruction;
 }
 
-void handle_instruction (UM_Mem m, instruction decoded, uint32_t* registers, 
+static inline void handle_instruction (UM_Mem m, instruction decoded, uint32_t* registers, 
                         program_counter pc, bool *halt_flag)
 {
-    uint32_t opcode = get_opcode (decoded);
-    uint32_t register_a = get_reg_a (decoded);
-    uint32_t register_b = get_reg_b (decoded);
-    uint32_t register_c = get_reg_c (decoded);
-    uint32_t value = get_value (decoded);
+    uint32_t opcode = decoded->opcode;
+    uint32_t register_a = decoded->register_a;
+    uint32_t register_b = decoded->register_b;
+    uint32_t register_c = decoded->register_c;
+    uint32_t value = decoded->value;
 
     switch (opcode) {
         case CMOV :
-            //printf("CMOV\n");
             conditional_move (registers, register_a, register_b, register_c);
             break;
-
         case SLOAD:
-
-            //printf("SLOAD\n");
             segmented_load (m, registers, register_a, register_b, register_c);
             break;
-
         case SSTORE:
-
-            //printf("SSTORE\n");
             segmented_store (m, registers, register_a, register_b, 
                                 register_c);
             break;
-
         case ADD:
-
-            //printf("ADD\n");
             add(registers, register_a, register_b, register_c); 
             break;
-
         case MUL:
-
-            //printf("MUL\n");
             multiply(registers, register_a, register_b, register_c);
             break;
-
         case DIV:
-
-            //printf("DIV\n");
             divide(registers, register_a, register_b, register_c);
             break;
-
         case NAND:
-            //printf("NAND\n");
-
             bit_nand(registers, register_a, register_b, register_c);
             break; 
-
         case HALT:
-            //printf("HALT\n");
-
             halt(halt_flag);
             break;
-
         case MAP:
-            //printf("MAPPING\n");
-
             map_segment(m, registers, register_b, register_c);
-            //print_mem_map(m);
             break;
-
         case UNMAP:
-            //printf("UNMAPPING\n");
-
             unmap_segment(m, registers, register_c);
             break;
-
         case OUTPUT:
-            //printf("OUTPUT\n");
-
             output(registers, register_c);
             break;
-
         case INPUT:
-            //printf("INPUT\n");
             input(registers, register_c); 
-            break; 
-
+            break;
         case LOADP:
-            //printf("LOADP\n");
-
             load_program(m, registers, register_b, register_c, pc);
             break;
-
         case LOADV:
-            //printf("LOADV\n");
-
             load_value(registers, register_a, value);
             break;
-
         default:
             exit(1);
-
     }
-
 }
 
-void conditional_move(uint32_t* registers, uint32_t reg_a, uint32_t reg_b, 
+static inline void conditional_move(uint32_t* registers, uint32_t reg_a, uint32_t reg_b, 
                       uint32_t reg_c)
 {
     if (registers[reg_c] != 0) {
@@ -602,7 +527,7 @@ void conditional_move(uint32_t* registers, uint32_t reg_a, uint32_t reg_b,
     }
 }
 
-void segmented_load (UM_Mem m, uint32_t* registers, uint32_t reg_a, 
+static inline void segmented_load (UM_Mem m, uint32_t* registers, uint32_t reg_a, 
                                uint32_t reg_b, uint32_t reg_c)
 {
 
@@ -610,7 +535,7 @@ void segmented_load (UM_Mem m, uint32_t* registers, uint32_t reg_a,
                                                      registers[reg_c])));
 } 
 
-void segmented_store (UM_Mem m, uint32_t* registers, uint32_t reg_a, 
+static inline void segmented_store (UM_Mem m, uint32_t* registers, uint32_t reg_a, 
                                 uint32_t reg_b, uint32_t reg_c)
 {
 
@@ -620,25 +545,25 @@ void segmented_store (UM_Mem m, uint32_t* registers, uint32_t reg_a,
     
 } 
 
-void add (uint32_t* registers, uint32_t reg_a, uint32_t reg_b, uint32_t reg_c)
+static inline void add (uint32_t* registers, uint32_t reg_a, uint32_t reg_b, uint32_t reg_c)
 {
     registers[reg_a] = (registers[reg_b] + registers[reg_c]);
 }  
 
-void multiply (uint32_t* registers, uint32_t reg_a, uint32_t reg_b, 
+static inline void multiply (uint32_t* registers, uint32_t reg_a, uint32_t reg_b, 
                uint32_t reg_c)
 {
     registers[reg_a] = (registers[reg_b] * registers[reg_c]);
 
 }
 
-void divide (uint32_t* registers, uint32_t reg_a, uint32_t reg_b, 
+static inline void divide (uint32_t* registers, uint32_t reg_a, uint32_t reg_b, 
              uint32_t reg_c)
 {
     registers[reg_a] = (registers[reg_b] / registers[reg_c]);
 } 
 
-void bit_nand (uint32_t* registers, uint32_t reg_a, uint32_t reg_b, 
+static inline void bit_nand (uint32_t* registers, uint32_t reg_a, uint32_t reg_b, 
               uint32_t reg_c)
 {
     registers[reg_a] = (uint32_t) ~((uint32_t)(registers[reg_b] & 
@@ -646,12 +571,12 @@ void bit_nand (uint32_t* registers, uint32_t reg_a, uint32_t reg_b,
 
 } 
 
-void halt (bool* halt_flag)
+static inline void halt (bool* halt_flag)
 {
     *halt_flag = true;
 } 
 
-void map_segment (UM_Mem m, uint32_t* registers, uint32_t reg_b, 
+static inline void map_segment (UM_Mem m, uint32_t* registers, uint32_t reg_b, 
                             uint32_t reg_c)
 {
     int num_words = registers[reg_c];
@@ -659,17 +584,17 @@ void map_segment (UM_Mem m, uint32_t* registers, uint32_t reg_b,
 }
 
 
-void unmap_segment (UM_Mem m, uint32_t* registers, uint32_t reg_c)
+static inline void unmap_segment (UM_Mem m, uint32_t* registers, uint32_t reg_c)
 {
     unmap_seg(m, registers[reg_c]);
 }
 
-void output (uint32_t* registers, uint32_t reg_c)
+static inline void output (uint32_t* registers, uint32_t reg_c)
 {
     fputc(registers[reg_c], stdout);
 } 
 
-void input (uint32_t* registers, uint32_t reg_c)
+static inline void input (uint32_t* registers, uint32_t reg_c)
 {
     int c = fgetc(stdin);
     if (c < 0 || c > 255) {
@@ -679,7 +604,7 @@ void input (uint32_t* registers, uint32_t reg_c)
     }
 }
 
-void load_program (UM_Mem m, uint32_t* registers, uint32_t reg_b, 
+static inline void load_program (UM_Mem m, uint32_t* registers, uint32_t reg_b, 
                              uint32_t reg_c, program_counter pc)
 {
     if (registers[reg_b] != 0) {
@@ -689,7 +614,7 @@ void load_program (UM_Mem m, uint32_t* registers, uint32_t reg_b,
     pc -> offset = registers[reg_c];
 }
 
-void load_value (uint32_t* registers, uint32_t reg_a, uint32_t value)
+static inline void load_value (uint32_t* registers, uint32_t reg_a, uint32_t value)
 {   
     registers[reg_a] = value;
 }
@@ -699,7 +624,7 @@ void load_value (uint32_t* registers, uint32_t reg_a, uint32_t value)
 static inline uint64_t Bitpack_getu(uint64_t word, unsigned width, unsigned lsb)
 {
         unsigned hi = lsb + width; /* one beyond the most significant bit */
-        assert(hi <= 64);
+        //assert(hi <= 64);
         /* different type of right shift */
         return shr(shl(word, 64 - hi), 64 - width); 
 }
@@ -708,9 +633,9 @@ static inline uint64_t Bitpack_newu(uint64_t word, unsigned width, unsigned lsb,
                       uint64_t value)
 {
         unsigned hi = lsb + width; /* one beyond the most significant bit */
-        assert(hi <= 64);
-        if (!Bitpack_fitsu(value, width))
-                RAISE(Bitpack_Overflow);
+        //assert(hi <= 64);
+        // if (!Bitpack_fitsu(value, width))
+        //         RAISE(Bitpack_Overflow);
         return shl(shr(word, hi), hi)                 /* high part */
                 | shr(shl(word, 64 - lsb), 64 - lsb)  /* low part  */
                 | (value << lsb);                     /* new part  */
@@ -719,7 +644,7 @@ static inline uint64_t Bitpack_newu(uint64_t word, unsigned width, unsigned lsb,
 
 static inline uint64_t shl(uint64_t word, unsigned bits)
 {
-        assert(bits <= 64);
+        // assert(bits <= 64);
         if (bits == 64)
                 return 0;
         else
@@ -731,7 +656,7 @@ static inline uint64_t shl(uint64_t word, unsigned bits)
  */
 static inline uint64_t shr(uint64_t word, unsigned bits)
 {
-        assert(bits <= 64);
+        // assert(bits <= 64);
         if (bits == 64)
                 return 0;
         else
@@ -790,4 +715,118 @@ static inline Array Array_new (int length)
         a->elems[i] = 0;
     }
     return a;
+}
+/* ------------------------ Optimization Functions round 2 with our own SEQ impl------------------ */
+/* ------------------------ Optimization Functions round 2 with our own SEQ impl------------------ */
+/* ------------------------ Optimization Functions round 2 with our own SEQ impl------------------ */
+/* ------------------------ Optimization Functions round 2 with our own SEQ impl------------------ */
+static inline Sequence Seq_new (int hint)
+{
+    Sequence s = malloc(sizeof(*s));
+    s->capacity = hint;
+    s->Length = 0;
+    s->elems = malloc(hint * (sizeof(*(s->elems))));
+    return s;
+}
+
+static inline void Seq_expand (Sequence s)
+{
+    Array *new = malloc((s->capacity * 2) * (sizeof(*(s->elems))));
+    for (int i = 0; i < s->Length; i++){
+        new[i] = s->elems[i];
+    }
+    Array *temp = s->elems;
+    free(temp);
+    s->capacity = s->capacity * 2; 
+    s->elems = new;
+}
+
+static inline void Seq_addhi (Sequence s, Array a)
+{
+    if (s -> Length == s-> capacity){
+        Seq_expand(s);
+    }
+    s->elems[s->Length] = a;
+    s->Length++;
+}
+
+static inline Array Seq_get (Sequence s, int index)
+{
+    return s->elems[index];
+}
+
+static inline int Seq_length (Sequence s)
+{
+    return s->Length;
+}
+
+static inline void Seq_put (Sequence s, int index, Array a)
+{
+    s->elems[index] = a;
+}
+
+static inline void Seq_free(Sequence *s)
+{
+    free((*s)->elems);
+    free(*s);
+
+}
+/* ------------------------ Optimization Functions round 2 with our own SEQ impl------------------ */
+/* ------------------------ Optimization Functions round 2 with our own SEQ impl------------------ */
+/* ------------------------ Optimization Functions round 2 with our own SEQ impl------------------ */
+/* ------------------------ Optimization Functions round 2 with our own SEQ impl------------------ */
+
+static inline Stack Stack_new ()
+{
+    Stack s = malloc(sizeof(*s));
+    s->capacity = 50;
+    s->Length = 0;
+    s->elems = malloc(50 * (sizeof(*(s->elems))));
+    return s;
+}
+
+static inline void Stack_expand (Stack s)
+{
+    uint64_t *new = malloc((s->capacity * 2) * (sizeof(*(s->elems))));
+    
+    for (int i = 0; i < s->Length; i++){
+        new[i] = s->elems[i];
+    }
+    s->capacity = s->capacity * 2; 
+    uint64_t *temp = s->elems;
+    free(temp);
+    s->elems = new;
+}
+
+static inline void Stack_push (Stack s, uint64_t a)
+{
+    if (s -> Length == s-> capacity){
+        Stack_expand(s);
+    }
+    s->elems[s->Length] = a;
+    s->Length++;
+}
+
+static inline uint64_t Stack_pop (Stack s)
+{
+    s->Length--;
+    return s->elems[s->Length];
+
+}
+
+static inline bool Stack_empty(Stack s)
+{
+    if (s->Length == 0){
+        return true;
+    } else {
+        return false;
+    }
+}
+
+static inline void Stack_free(Stack *s)
+{
+
+    free((*s)->elems);
+    free(*s);
+
 }

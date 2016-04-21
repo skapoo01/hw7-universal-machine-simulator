@@ -54,11 +54,15 @@ all: $(EXECS)
 ## Linking step (.o -> executable program)
  
 
-um: um.o unsafearray.o
+um: um.o unsafearray.o 
 	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS) 
 
 array: unsafearray.o
 	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
+
+sequence: unsafesequence.o unsafearray.o
+	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
+
 
 clean: 
 	rm -f $(EXECS) *.o

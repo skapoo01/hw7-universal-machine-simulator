@@ -38,24 +38,19 @@ struct Array
 // }
 
 
-
 int Array_length (Array a)
 {
 	return a -> length;
 }
-
 uint32_t* Array_at (Array a, int i)
 {
 	return &(a->elems[i]);
-
 } 
-
 void Array_free (Array *a)
 {
 
 	free(*a);
 } 
-
 Array Array_copy (Array a, int length)
 {
 	Array copy;
@@ -69,10 +64,11 @@ Array Array_copy (Array a, int length)
 	return copy;
 } 
 
-
 Array Array_new (int length)
 {
-	Array a = malloc(sizeof(*a) + length * sizeof(*a->elems));
+	assert (length > 0);
+	Array a = malloc((sizeof(*a) + length) * (sizeof(*a->elems)));
+	assert(a != NULL);
 	a -> length = length;
 	for (int i = 0; i < length; i++){
 		a->elems[i] = 0;
