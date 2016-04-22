@@ -1,3 +1,0 @@
-Tracking Changes 
-
-1) Put everything into one file-no significant speedup 

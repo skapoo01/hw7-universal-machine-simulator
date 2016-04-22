@@ -1,109 +1,62 @@
 README
 Comp40: Spring 2016
-Project 6: Universal Machine 
-
+Project 7: Optimizing the UM
 
 Programming Partners: Ballard Blair and Siddharth Kapoor 
 
-We received help from the Comp40 TAs, especially Charlie. 
+We received help from the Comp40 TAs, thanks you all rock. 
 
-We believe our universal machine has been correctly implemented.
-
-----------------------------------------------------------------------------
---------------------------Departures from Design ---------------------------
-    
-    The only significant departure from our initial design was to hide the 
-    contents of our memory and instruction structs as per the feedback in 
-    our design document. 
+We believe our optimized universal machine has been correctly implemented.
 
 ----------------------------------------------------------------------------
--------------------------- UM Architecture ---------------------------------
+--------------------------Routine takes up most time -----------------------
+By looking at kcachegrind, we have identified that the handle_instruction() 
+takes up the most time in our program. We analyzed the assembly code and 
+found alot of mov and push/pop instructions. We believe this is because 
+handle_instruction() makes alot of function calls which mandates that
+function parameters are pushed/poped from the stack. Were we to substitute 
+the function calls for all the UM instructions inside handle_instruction() 
+with the actual code for the functions, it wouldn't guarantee an improvement 
+in performance since handle_instruction() has more variables than can be
+maintained in the registers.
 
-    Our UM module is a main that coordinates all of our other modules. The 
-    two main modules are UM_controller and UM_mem, both reside on the stack
-    of main(). Inside the UM_controller there is a main execution loop on the 
-    stack of which the program counter and registers exist. The execution loop
-    fetches a 32-bit instruction from memory, parses the instruction into 
-    its relevant opcode and register usage using the supplementary module 
-    UM_interpreter, and then executes the instruction. The underlying 
-    representation of segmented memory is handled by UM_mem module without 
-    the user ever having to directly interact with segments or their 
-    identification. 
-
-    The UM_interpreter module holds the secret of the on-disk format of 32-bit
-    instructions. The UM_mem module holds the secret of how the segmented 
-    memory is represented. The UM_controller holds the secret of the 
-    implementation of the instructions.
-
+We also encountered a lot of nopl and nopw instructions wihch are used by x86
+for padding. Our hunch is that the need for this arises from the varied use of 
+data types, most importantly, our usage of various structs, which have 
+arbitrary non-standard sizes. The way to eliminate these instructions would 
+essentially be to hardcode these data structures inside our code. We would 
+venture that doing this would improve our program's performance manifold. Yet,
+the effort required to achieve this for a non-commercially used program far 
+outweigh the performance improvements that can be expected, especially for 
+standard benchmark programs.
 
 ----------------------------------------------------------------------------
 -------------------------- Hours Spent -------------------------------------
-    Analyzing Problem:               6 
-    Preparing Design:                7
-    Solving Problems after Analysis: 32
-
+    Analyzing Problem:               3        
+    Solving Problems after Analysis: ~15
 
 ----------------------------------------------------------------------------
---------------------------50 million ---------------------------------------
-
-    We wrote a unit test with a loop that will call load_val 50 million times.
-    The time it took to complete: 14.97 seconds
-
+-------------------------- Machine Used ------------------------------------
+We consistently used the machines in Halligan 120, which can be identified as 
+Intel(R) Core(TM) i5-4590 CPU @ 3.30GHz
 
 ----------------------------------------------------------------------------
--------------------------- Unit Tests --------------------------------------
+-------------------------- Benchmarks used ---------------------------------
+We used the following programs as benchmarks:
 
-    * -Signifies the use of print_mem_map() before and after the unit test.
-    print_mem_map() is a function we wrote to print our entire segmented 
-    memory, shown as segment_id followed by all of the instructions and their 
-    respective indices. Calling it before and after the unit tests enables
-    us to confirm that the unit test is successful 
+midmark.um - final run time   .26 sec
+sandmark.umz - final run time 6.66 sec
+advent.umz - final run time   2.20 sec
 
-halt.um - simply executes a halt instruction 
+----------------------------------------------------------------------------
+-------------------------- Things we learned -------------------------------
+-Breaking abstraction barriers is fun!
 
-add.um - stores 56 into reg2 and 2 in reg1, adds them and stores result in 
-reg3, prints ASCII representation of reg3
-
-
-seg-load.um * - loads 0 into reg1 and 10 into reg2, maps segment with enough 
-space for 10 instructions, then puts the seg_id in reg1. Loads 0 into reg3, 
-and 20 into reg4, maps segment with space for 20 instructions and puts seg_id
-in register 3, loads 3 into register 4 and 25 into reg7, calls a seg_store 
-putting 25 from reg7 into seg_id in reg1, offset of reg4(3), calls a seg_load
-loading the value from seg_id in reg1, offset of reg4, then putting the result
-in reg5. Loads 13 into reg4, and 25 reg7. Calls a seg_store, putting 45 from 
-reg7 into seg_id of reg1, and an offset of reg4. Calls a seg_load on the 
-value at seg_id = reg1, and an offset of reg4, putting the result in reg5. 
-
-bit-nand.um - loads 110 into reg1 and reg2, calls nand on reg1 and reg2, 
-storing the result in register 3, then calls nand on reg3 and reg3, storing 
-the result in reg3. Prints the output of reg3 in ASCII 
-
-map_seg.um * - loads 0 into reg1 and 10 into reg2. Maps a segment with 
-num_instructions in reg2, storing the newly mapped seg's index in reg1.
-Loads 1 into reg3 and 20 into reg4. Maps a segment with num_instructions in 
-reg4, storing the newly mapped seg's index in reg3. 
-
-seg-store.um * - loads 4 into reg4. Maps a segment with 
-num_instructions in reg4, storing the newly mapped seg's index in reg5.
-Loads 5 into seg1 index 0, 10 into seg1 index 1, 15 into seg1 index 2, 
-and 20 into seg1 index 3
-
-load-program.um * - Executes multiple statements, then calls a load_program 
-to try and skip an output statement at index 6 of seg0, if successful the 
-program has no output 
-
-input.um - takes in a character and then immediatly outputs it 
-
-cmov.um -  loads values into reg1, reg2, and reg3. If reg1 is not 0, then it
-moves the value in reg2 into reg3. Prints reg3 before and after the cmov
-In this test, it first prints 120 in ASCII and then prints 110 in ASCII. 
-Performs another cmov in a similar fashion 
-
-multiply.um - multiplies 2 and 56 and outputs result stored in reg3 in ASCII
-
-divide.um - divides 124 by 2, and stores result in reg3, outputs reg3 in ASCII
-
-unmap-seg.um * - maps three segments and unmaps them, then remaps three 
-segments capable of holding a different number of instructions 
+-We created a version of our optimized machine that uses function pointers
+to execute UM instructions instead of a big switch case.
+ 
+We found this actually slowed our program down because as it turns out our 
+compiler optimized switch cases to jump tables which is essentially the 
+same as using function pointers, without the additional deferencing that 
+we had to do. 
 

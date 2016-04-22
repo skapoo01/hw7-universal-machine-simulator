@@ -15,7 +15,7 @@ IFLAGS = -I/comp/40/include -I/usr/sup/cii40/include/cii -I/comp/40/lib64
 # Compile flags
 # Set debugging information, allow the c99 standard,
 # max out warnings, and use the updated include path
-CFLAGS = -O2 -g -std=gnu99 -Wall -Wextra -Werror -Wfatal-errors -pedantic $(IFLAGS)
+CFLAGS = -O2 -g -std=gnu99 -Wall -Wextra -Werror -Wfatal-errors -pedantic -Wunused-parameter $(IFLAGS)
 
 # Linking flags
 # Set debugging information and update linking path
@@ -47,22 +47,18 @@ all: $(EXECS)
 ## Compile step (.c files -> .o files)
 
 # To get *any* .o file, compile its .c file with the following rule.
-%.o: %.c $(INCLUDES)
+%.o: %.c $(INCLUDES) 
 	$(CC) $(CFLAGS) -c $< -o $@
 
 
 ## Linking step (.o -> executable program)
  
 
+#um3: um3.o
+#	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS) 
+
 um: um.o
 	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS) 
-
-array: unsafearray.o
-	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
-
-sequence: unsafesequence.o unsafearray.o
-	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
-
 
 clean: 
 	rm -f $(EXECS) *.o
